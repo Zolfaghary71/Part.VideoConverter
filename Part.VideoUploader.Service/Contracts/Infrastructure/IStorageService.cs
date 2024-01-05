@@ -3,5 +3,7 @@
 public interface IStorageService
 {
    Task UploadAsync(string bucketName, string objectName, Stream dataStream, string contentType);
+   Task<Stream> DownloadAsync(string objectName);
+
 
 }

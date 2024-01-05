@@ -3,7 +3,7 @@ using Part.VideoUploader.Service.Contracts.Infrastructure;
 using Minio;
 
 using Minio.DataModel.Args;
-
+using Minio.Exceptions;
 
 
 namespace Part.VideoUploader.Infrastructure.Storage
@@ -29,14 +29,14 @@ namespace Part.VideoUploader.Infrastructure.Storage
 
         public async Task UploadAsync(string bucketName, string objectName, Stream dataStream, string contentType)
         {
-            // Check if the bucket exists, and if not, create it
+           
             bool found = await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(_bucketName));
             if (!found)
             {
                 await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(_bucketName));
             }
 
-            // Upload the stream to the specified bucket with the given object name
+            
             await _minioClient.PutObjectAsync(
                 new PutObjectArgs()
                     .WithBucket(_bucketName)
@@ -47,9 +47,24 @@ namespace Part.VideoUploader.Infrastructure.Storage
             );
         }
 
-        public Task UploadAsync(string bucketName, string nameAfterUpload, string localFilePath, string objectName)
+        public async Task<Stream> DownloadAsync(string objectName)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var memoryStream = new MemoryStream();
+                await _minioClient.GetObjectAsync(
+                    new GetObjectArgs()
+                        .WithBucket(_bucketName)
+                        .WithObject(objectName)
+                        .WithCallbackStream(s => s.CopyTo(memoryStream))
+                );
+                memoryStream.Seek(0, SeekOrigin.Begin); 
+                return memoryStream;
+            }
+            catch (MinioException ex)
+            {
+                throw new Exception($"Error downloading object '{objectName}': {ex.Message}", ex);
+            }
         }
     }
 }
